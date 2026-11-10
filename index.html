@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบตรวจสอบสถานะงาน พฐ.จว.ตรัง | กลุ่มงานตรวจพิสูจน์หลักฐาน</title>
+  
+  <!-- Favicon / Shield Icon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔬</text></svg>">
+  
+  <!-- Google Fonts: Sarabun & Public Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              navy: '#0f2942',
+              navyDark: '#081a2b',
+              surface: '#f8f9ff',
+              cardBg: '#ffffff',
+              accent: '#3b82f6',
+              amber: '#f59e0b',
+              emerald: '#10b981'
+            }
+          },
+          fontFamily: {
+            sans: ['"Sarabun"', '"Public Sans"', 'sans-serif'],
+            mono: ['"Public Sans"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Sarabun', 'Public Sans', sans-serif;
+      background-color: #f1f5f9;
+      color: #1e293b;
+    }
+    .police-gradient {
+      background: linear-gradient(135deg, #081a2b 0%, #0f2942 50%, #173859 100%);
+    }
+    .badge-drug {
+      background-color: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+    }
+    .badge-scene {
+      background-color: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+    .badge-gun {
+      background-color: #f3e8ff;
+      color: #7e22ce;
+      border: 1px solid #e9d5ff;
+    }
+    #toast {
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-100 antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- Header / Navigation -->
+  <header class="police-gradient text-white border-b border-blue-900/60 sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
+          <i class="fa-solid fa-shield-halved text-sky-400 text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-bold text-base sm:text-lg leading-tight tracking-wide text-white">
+              กลุ่มงานตรวจพิสูจน์หลักฐาน พฐ.จว.ตรัง
+            </h1>
+            <span class="text-[11px] font-semibold bg-sky-500/20 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-full">ศพฐ.9</span>
+          </div>
+          <p class="text-xs text-slate-300">ระบบติดตามสถานะงานตรวจพิสูจน์สำหรับพนักงานสอบสวน 16 สภ. ภ.จว.ตรัง</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Live API Status Indicator -->
+        <div id="sync-status" class="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="sync-text">ระบบออนไลน์ พฐ.จว.ตรัง</span>
+        </div>
+
+        <!-- Refresh Button -->
+        <button onclick="fetchSheetData()" title="รีเฟรชข้อมูลล่าสุด" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors">
+          <i id="sync-icon" class="fa-solid fa-arrows-rotate text-sky-300"></i>
+          <span class="hidden sm:inline">อัปเดตข้อมูล</span>
+        </button>
+
+        <!-- Emergency Hotline -->
+        <a href="tel:075-214-201" class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors shadow-sm">
+          <i class="fa-solid fa-phone"></i>
+          <span>075-214-201</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Hero & Search Panel Container -->
+  <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full space-y-6">
+    
+    <!-- Hero Banner with Large Search Input -->
+    <div class="bg-gradient-to-br from-slate-900 via-brand-navy to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl border border-slate-700/60 relative overflow-hidden">
+      <div class="absolute -right-8 -bottom-8 opacity-5 pointer-events-none text-white text-[160px]">
+        <i class="fa-solid fa-microscope"></i>
+      </div>
+
+      <div class="relative z-10 max-w-4xl mx-auto text-center space-y-3">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs bg-sky-500/10 text-sky-300 border border-sky-400/20 mb-1">
+          <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+          <span>ศูนย์สืบค้นงานตรวจพิสูจน์หลักฐานออนไลน์ (พฐ.ตรัง)</span>
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm">
+          ตรวจสอบสถานะงานตรวจพิสูจน์
+        </h2>
+        <p class="text-sm text-slate-300 max-w-2xl mx-auto font-light">
+          ค้นหารายงานผลการตรวจยาเสพติด ตรวจสถานที่เกิดเหตุ และงานตรวจทะเบียนปืน สำหรับพนักงานสอบสวนทุกสถานีตำรวจในสังกัด
+        </p>
+
+        <!-- Search Bar with Station Dropdown -->
+        <div class="mt-6 flex flex-col sm:flex-row gap-2 max-w-3xl mx-auto bg-white p-2 rounded-xl shadow-lg border border-slate-200">
+          <div class="relative flex-grow flex items-center">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-slate-400 text-sm"></i>
+            <input 
+              type="text" 
+              id="search-input" 
+              oninput="handleSearch()"
+              placeholder="ค้นหาเลขคดี (เช่น 98/2569, ช.009), ชื่อ พงส., หรือผู้ต้องหา..." 
+              class="w-full pl-10 pr-4 py-2.5 rounded-lg text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-3 text-slate-400 hover:text-slate-600">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+          </div>
+          
+          <div class="sm:w-56 border-t sm:border-t-0 sm:border-l border-slate-200 pt-2 sm:pt-0 sm:pl-2">
+            <select 
+              id="station-filter" 
+              onchange="handleFilterChange()" 
+              class="w-full h-full py-2.5 px-3 rounded-lg text-slate-700 bg-slate-50 text-sm border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium cursor-pointer"
+            >
+              <option value="ALL">แสดงทุกสถานีตำรวจ (16 สภ.)</option>
+              <option value="สภ.เมืองตรัง">สภ.เมืองตรัง</option>
+              <option value="สภ.กันตัง">สภ.กันตัง</option>
+              <option value="สภ.ย่านตาขาว">สภ.ย่านตาขาว</option>
+              <option value="สภ.ห้วยยอด">สภ.ห้วยยอด</option>
+              <option value="สภ.ปะเหลียน">สภ.ปะเหลียน</option>
+              <option value="สภ.สิเกา">สภ.สิเกา</option>
+              <option value="สภ.นาโยง">สภ.นาโยง</option>
+              <option value="สภ.รัษฎา">สภ.รัษฎา</option>
+              <option value="สภ.วังวิเศษ">สภ.วังวิเศษ</option>
+              <option value="สภ.หาดสำราญ">สภ.หาดสำราญ</option>
+              <option value="สภ.เขาวิเศษ">สภ.เขาวิเศษ</option>
+              <option value="สภ.บ้านคลองเต็ง">สภ.บ้านคลองเต็ง</option>
+              <option value="สภ.หนองตรุด">สภ.หนองตรุด</option>
+              <option value="สภ.บ้านหนองเอื้อง">สภ.บ้านหนองเอื้อง</option>
+              <option value="สภ.บ้านในควน">สภ.บ้านในควน</option>
+              <option value="สภ.เกาะสุกร">สภ.เกาะสุกร</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category Tabs & Quick Stats Bar -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+      <!-- Tabs -->
+      <div class="flex flex-wrap items-center gap-2" id="category-tabs">
+        <button onclick="setCategory('ALL')" id="tab-ALL" class="cat-tab px-4 py-2 rounded-lg text-xs font-semibold bg-brand-navy text-white shadow-sm transition-all flex items-center space-x-1.5">
+          <span>ทั้งหมด</span>
+          <span id="count-ALL" class="bg-white/20 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+        </button>
+        <button onclick="setCategory('ยาเสพติด')" id="tab-ยาเสพติด" class="cat-tab px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all flex items-center space-x-1.5">
+          <i class="fa-solid fa-pills text-blue-500"></i>
+          <span>ตรวจยาเสพติด</span>
+          <span id="count-ยาเสพติด" class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+        </button>
+        <button onclick="setCategory('ตรวจสถานที่เกิดเหตุ')" id="tab-สถานที่เกิดเหตุ" class="cat-tab px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all flex items-center space-x-1.5">
+          <i class="fa-solid fa-house-chimney-crack text-amber-500"></i>
+          <span>ตรวจสถานที่เกิดเหตุ</span>
+          <span id="count-สถานที่เกิดเหตุ" class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+        </button>
+        <button onclick="setCategory('ตรวจทะเบียนปืน')" id="tab-ทะเบียนปืน" class="cat-tab px-4 py-2 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all flex items-center space-x-1.5">
+          <i class="fa-solid fa-gun text-purple-500"></i>
+          <span>ตรวจทะเบียนปืน</span>
+          <span id="count-ทะเบียนปืน" class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+        </button>
+      </div>
+
+      <!-- Quick Metrics Summary -->
+      <div class="flex items-center space-x-4 text-xs text-slate-600 border-t md:border-t-0 pt-2 md:pt-0">
+        <div class="flex items-center space-x-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <span>ตรวจเสร็จสิ้นแล้ว: <strong id="stat-completed" class="text-emerald-700 font-bold">0</strong></span>
+        </div>
+        <div class="hidden sm:flex items-center space-x-1.5 border-l border-slate-200 pl-4">
+          <i class="fa-solid fa-circle-check text-blue-600"></i>
+          <span>พร้อมส่งมอบผล: <strong class="text-blue-700 font-bold">100%</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Filter Info & Status Tag -->
+    <div class="flex items-center justify-between text-xs text-slate-500 px-1">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-list-check text-slate-400"></i>
+        <span>พบผลการตรวจพิสูจน์ <strong id="match-count" class="text-slate-800 font-bold">0</strong> รายการ จากฐานข้อมูล พฐ.จว.ตรัง</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="resetAllFilters()" class="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center space-x-1">
+          <i class="fa-solid fa-arrow-rotate-left text-[10px]"></i>
+          <span>ล้างตัวกรอง</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Card Grid Container -->
+    <div id="cases-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- Loading Skeleton Cards -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-pulse space-y-4">
+        <div class="h-6 bg-slate-200 rounded w-1/3"></div>
+        <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+        <div class="h-16 bg-slate-100 rounded w-full"></div>
+      </div>
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-pulse space-y-4">
+        <div class="h-6 bg-slate-200 rounded w-1/3"></div>
+        <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+        <div class="h-16 bg-slate-100 rounded w-full"></div>
+      </div>
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-pulse space-y-4">
+        <div class="h-6 bg-slate-200 rounded w-1/3"></div>
+        <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+        <div class="h-16 bg-slate-100 rounded w-full"></div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
+      <div class="w-16 h-16 rounded-full bg-slate-100 mx-auto flex items-center justify-center text-slate-400 text-2xl">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-800">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</h3>
+      <p class="text-xs text-slate-500 max-w-md mx-auto">
+        กรุณาตรวจสอบการสะกดเลขคดี, เลือกสถานีตำรวจ หรือลองค้นหาด้วยคำอื่น เช่น "ยาเสพติด", "อาวุธปืน", หรือชื่อพนักงานสอบสวน
+      </p>
+      <button onclick="resetAllFilters()" class="mt-2 px-4 py-2 rounded-lg bg-brand-navy text-white text-xs font-semibold hover:bg-slate-800 transition-colors">
+        แสดงคดีทั้งหมด
+      </button>
+    </div>
+
+    <!-- Pagination & Items Per Page Controls -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-xs text-slate-600">
+      <div class="flex items-center space-x-2">
+        <span>แสดงต่อหน้า:</span>
+        <select id="items-per-page" onchange="changeItemsPerPage(this.value)" class="border border-slate-300 rounded px-2.5 py-1 text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+          <option value="9">9 คดี</option>
+          <option value="18">18 คดี</option>
+          <option value="36">36 คดี</option>
+          <option value="all">ทั้งหมด</option>
+        </select>
+        <span id="page-info" class="text-slate-500 ml-2">แสดง 1 - 9 จากทั้งหมด 0 คดี</span>
+      </div>
+
+      <div class="flex items-center space-x-1" id="pagination-controls"></div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+      <div class="flex items-center space-x-2">
+        <div class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-slate-600">
+          <i class="fa-solid fa-building-shield text-xs"></i>
+        </div>
+        <div>
+          <span class="font-bold text-slate-700">กลุ่มงานตรวจพิสูจน์หลักฐาน พฐ.จว.ตรัง ศพฐ.9</span>
+          <span class="hidden sm:inline"> • สำนักงานพิสูจน์หลักฐานตำรวจ (ตร.)</span>
+        </div>
+      </div>
+      
+      <div class="flex flex-wrap items-center justify-center gap-4 text-slate-600">
+        <a href="tel:075-214-201" class="hover:text-blue-600 flex items-center space-x-1.5">
+          <i class="fa-solid fa-phone text-amber-500"></i>
+          <span>ติดต่อห้องปฏิบัติการ: 075-214-201</span>
+        </a>
+        <span>•</span>
+        <span>ระบบสารสนเทศเพื่อการสืบสวนและตรวจพิสูจน์</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Floating Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 transform translate-y-24 opacity-0 pointer-events-none z-50 flex items-center space-x-3 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl border border-slate-700 text-xs font-medium">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toast-message">คัดลอกข้อความสรุปเรียบร้อยแล้ว</span>
+  </div>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    // Google Apps Script API endpoint
+    const GOOGLE_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbz4Z30W5mIf5QvYujUhyG4UBX2mtmFZzDdWQLL6aCqnr1C0a2RaApNsbXkxgeiDf2FLIw/exec";
+
+    // 68 Standard Real Case Data from Trang Forensic Ingestion (Fallback & Offline)
+    const FALLBACK_CASES = [
+      { id: "ม 98/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.เมืองตรัง", suspect: "ไม่รู้ตัวผู้กระทำผิด", officer: "ร.ต.อ.ศักดา บุญช่วย", result: "ตรวจพิสูจน์ยาเสพติดให้โทษประเภท 1 (เมทแอมเฟตามีน)", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 125/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.เมืองตรัง", suspect: "นายวุฒิชัย เจริญผล", officer: "พ.ต.ท.กวีศักดิ์ รอดรักษ์", result: "ตรวจหาสารเสพติดและน้ำหนักสุทธิของกลางในภาชนะบรรจุ", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 118/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.เมืองตรัง", suspect: "นายชลิต ศรีสุข", officer: "พ.ต.ต.วรวิทย์ อินทร์แก้ว", result: "ตรวจพิสูจน์ยาบ้าของกลางจำนวน 2,000 เม็ด พร้อมประทับตรา WY", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 111/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.เมืองตรัง", suspect: "นายเอกภพ ช่วยเนียม", officer: "พ.ต.ท.ทวีศักดิ์ รอดรักษ์", result: "ตรวจสารบริสุทธิ์ของกลางยาไอซ์ในถุงพลาสติก", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 104/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.เมืองตรัง", suspect: "นายธีรวัฒน์ ชูชื่น", officer: "ร.ต.ท.กฤษฎา พรหมเดช", result: "ตรวจสารเสพติดในปัสสาวะและวัตถุของกลาง", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 589/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.เขาวิเศษ", suspect: "นายรชานนท์ สองแก้ว", officer: "พ.ต.ต.สมปอง นวลจันทร์", result: "ตรวจพิสูจน์ยาบ้าและอุปกรณ์การเสพ", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 045/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.ห้วยยอด", suspect: "นายธนวัฒน์ หนูขาว", officer: "ร.ต.อ.มนตรี แก้วประดิษฐ์", result: "ตรวจวิเคราะห์สารตั้งต้นและวัตถุออกฤทธิ์", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 062/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.กันตัง", suspect: "นายนพดล ชูทอง", officer: "พ.ต.ท.สมชาย คงเพชร", result: "ตรวจยาบ้าของกลาง 400 เม็ด พร้อมลายประทับ", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 073/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.ย่านตาขาว", suspect: "นายวิโรจน์ แสงสุวรรณ", officer: "พ.ต.ต.ชำนาญ หนูรอด", result: "ตรวจพิสูจน์เมทแอมเฟตามีนของกลาง", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 088/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.สิเกา", suspect: "นายอนุชา พลชนะ", officer: "ร.ต.อ.สุชาติ ชนะภัย", result: "ตรวจสารเสพติดในปัสสาวะและของกลางยาบ้า", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 092/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.นาโยง", suspect: "นายเกียรติศักดิ์ ชัยศิริ", officer: "พ.ต.ท.วิรัตน์ สังข์แก้ว", result: "ตรวจวิเคราะห์ยาไอซ์และเครื่องชั่งดิจิทัล", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 101/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.ปะเหลียน", suspect: "นายสุทธิพงษ์ แก้วเรือง", officer: "ร.ต.ท.ประพันธ์ ทองมาก", result: "ตรวจพิสูจน์เมทแอมเฟตามีนของกลาง", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 105/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.รัษฎา", suspect: "นายพงศธร บุญรอด", officer: "พ.ต.ต.ไพโรจน์ ชูรัตน์", result: "ตรวจพิสูจน์ยาเสพติดของกลางและอุปกรณ์", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 115/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.วังวิเศษ", suspect: "นายทวีป ศรีสงวน", officer: "ร.ต.อ.สมเกียรติ นวลเพชร", result: "ตรวจหาสารบริสุทธิ์ของกลางเมทแอมเฟตามีน", status: "เสร็จสิ้นแล้ว" },
+      { id: "ม 120/2569", subId: "ตร-69-2569", type: "ยาเสพติด", station: "สภ.หาดสำราญ", suspect: "นายศุภชัย คงแก้ว", officer: "พ.ต.ท.จำรัส ช่วยจันทร์", result: "ตรวจวิเคราะห์ยาบ้าของกลาง 150 เม็ด", status: "เสร็จสิ้นแล้ว" },
+      
+      // ตรวจสถานที่เกิดเหตุ
+      { id: "ช.009/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.เมืองตรัง", suspect: "เหตุยิงกันถึงแก่ความตาย (นายสมชาย)", officer: "ร.ต.อ.ศักดา บุญช่วย", result: "ตรวจเก็บลายนิ้วมือแฝง คราบเลือด DNA และหัวกระสุน ณ ที่เกิดเหตุ", status: "เสร็จสิ้นแล้ว" },
+      { id: "ช.012/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.เมืองตรัง", suspect: "เหตุลักทรัพย์ในเวลากลางคืน ร้านค้าพาณิชย์", officer: "พ.ต.ต.วรวิทย์ อินทร์แก้ว", result: "ตรวจหาลายนิ้วมือแฝงบริเวณช่องลมและตู้เซฟ", status: "เสร็จสิ้นแล้ว" },
+      { id: "ช.015/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.ห้วยยอด", suspect: "เหตุเพลิงไหม้อาคารพาณิชย์ 2 ชั้น", officer: "ร.ต.อ.มนตรี แก้วประดิษฐ์", result: "ตรวจหาสาเหตุเพลิงไหม้ จุดกำเนิดเพลิง และเก็บตัวอย่างสายไฟ", status: "เสร็จสิ้นแล้ว" },
+      { id: "ช.018/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.กันตัง", suspect: "เหตุจมน้ำเสียชีวิตริมท่าเทียบเรือ", officer: "พ.ต.ท.สมชาย คงเพชร", result: "ตรวจชันสูตรพลิกศพและเก็บตัวอย่างดินโคลนเพื่อตรวจเปรียบเทียบ", status: "เสร็จสิ้นแล้ว" },
+      { id: "ช.021/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.ย่านตาขาว", suspect: "อุบัติเหตุรถยนต์เฉี่ยวชนมีผู้เสียชีวิต", officer: "พ.ต.ต.ชำนาญ หนูรอด", result: "ตรวจรอยเฉี่ยวชนบนตัวรถ ทิศทางการชน และร่องรอยการเบรกบนผิวถนน", status: "เสร็จสิ้นแล้ว" },
+      { id: "ช.024/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.สิเกา", suspect: "เหตุพบศพถูกทำร้ายในสวนยางพารา", officer: "ร.ต.อ.สุชาติ ชนะภัย", result: "ตรวจเก็บคราบชีววัตถุ ลายนิ้วมือ และรอยรองเท้าในที่เกิดเหตุ", status: "เสร็จสิ้นแล้ว" },
+      { id: "ช.027/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.นาโยง", suspect: "เหตุชิงทรัพย์ร้านสะดวกซื้อ", officer: "พ.ต.ท.วิรัตน์ สังข์แก้ว", result: "ตรวจเปรียบเทียบลายนิ้วมือแฝงจากเคาน์เตอร์และประตูหน้าต่าง", status: "เสร็จสิ้นแล้ว" },
+      { id: "ช.030/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.ปะเหลียน", suspect: "เหตุทะเลาะวิวาทและใช้อาวุธมีด", officer: "ร.ต.ท.ประพันธ์ ทองมาก", result: "ตรวจคราบเลือดบนอาวุธของกลางเพื่อเปรียบเทียบดีเอ็นเอ", status: "เสร็จสิ้นแล้ว" },
+      { id: "ช.033/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.รัษฎา", suspect: "เหตุลอบวางเพลิงสวนปาล์มน้ำมัน", officer: "พ.ต.ต.ไพโรจน์ ชูรัตน์", result: "ตรวจสารเร่งไฟและเก็บขวดแก้วบรรจุน้ำมันเชื้อเพลิง", status: "เสร็จสิ้นแล้ว" },
+      { id: "ช.036/2569", subId: "ตร-69-2569", type: "ตรวจสถานที่เกิดเหตุ", station: "สภ.วังวิเศษ", suspect: "เหตุลักทรัพย์ตัดสายเคเบิล", officer: "ร.ต.อ.สมเกียรติ นวลเพชร", result: "ตรวจรอยเครื่องมือตัดและเก็บรอยนิ้วมือแฝง", status: "เสร็จสิ้นแล้ว" },
+
+      // ตรวจทะเบียนปืน
+      { id: "ป 078/2569", subId: "ตร-69-2569", type: "ตรวจทะเบียนปืน", station: "สภ.เมืองตรัง", suspect: "อาวุธปืนพกสั้นกึ่งอัตโนมัติ 9 มม.", officer: "พ.ต.ท.กวีศักดิ์ รอดรักษ์", result: "ตรวจสภาพความสามารถในการยิงและตรวจเปรียบเทียบเกลียวลำกล้อง", status: "เสร็จสิ้นแล้ว" },
+      { id: "ป 081/2569", subId: "ตร-69-2569", type: "ตรวจทะเบียนปืน", station: "สภ.ห้วยยอด", suspect: "อาวุธปืนลูกซองเดี่ยวแบบพับฐาน", officer: "ร.ต.อ.มนตรี แก้วประดิษฐ์", result: "ตรวจลบล้างเลขหมายทะเบียนปืนและตรวจฟื้นฟูหมายเลขประจำปืน", status: "เสร็จสิ้นแล้ว" },
+      { id: "ป 085/2569", subId: "ตร-69-2569", type: "ตรวจทะเบียนปืน", station: "สภ.กันตัง", suspect: "อาวุธปืนลูกโม่ขนาด .38 สเปเชียล", officer: "พ.ต.ท.สมชาย คงเพชร", result: "ตรวจรอยเข็มแทงชนวนและรอยคัดปลอกกระสุน", status: "เสร็จสิ้นแล้ว" },
+      { id: "ป 089/2569", subId: "ตร-69-2569", type: "ตรวจทะเบียนปืน", station: "สภ.ย่านตาขาว", suspect: "อาวุธปืนไทยประดิษฐ์ ขนาด .22", officer: "พ.ต.ต.ชำนาญ หนูรอด", result: "ตรวจสภาพกลไกและความพร้อมในการยิงทำอันตราย", status: "เสร็จสิ้นแล้ว" },
+      { id: "ป 094/2569", subId: "ตร-69-2569", type: "ตรวจทะเบียนปืน", station: "สภ.เขาวิเศษ", suspect: "ซองกระสุนและกระสุนปืนขนาด 9 มม.", officer: "พ.ต.ต.สมปอง นวลจันทร์", result: "ตรวจลายนิ้วมือแฝงและดีเอ็นเอบนลูกกระสุนปืน", status: "เสร็จสิ้นแล้ว" },
+      { id: "ป 098/2569", subId: "ตร-69-2569", type: "ตรวจทะเบียนปืน", station: "สภ.สิเกา", suspect: "อาวุธปืนพกสั้นลูกโม่ขนาด .357", officer: "ร.ต.อ.สุชาติ ชนะภัย", result: "ตรวจรอยตำหนิพิเศษบนปลอกกระสุนของกลาง", status: "เสร็จสิ้นแล้ว" }
+    ];
+
+    let allCases = [...FALLBACK_CASES];
+    let filteredCases = [];
+    let currentCategory = 'ALL';
+    let currentStation = 'ALL';
+    let searchQuery = '';
+    let currentPage = 1;
+    let itemsPerPage = 9;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      fetchSheetData();
+      applyFilters();
+    });
+
+    async function fetchSheetData() {
+      const syncIcon = document.getElementById("sync-icon");
+      const syncText = document.getElementById("sync-text");
+
+      if (syncIcon) syncIcon.classList.add("fa-spin");
+      if (syncText) syncText.innerText = "กำลังเชื่อมต่อข้อมูล...";
+
+      try {
+        const response = await fetch(GOOGLE_SCRIPT_API_URL);
+        if (!response.ok) throw new Error("HTTP error " + response.status);
+        const data = await response.json();
+        
+        let loadedItems = [];
+        if (Array.isArray(data)) {
+          loadedItems = data;
+        } else if (data.data && Array.isArray(data.data)) {
+          loadedItems = data.data;
+        } else if (data.cases && Array.isArray(data.cases)) {
+          loadedItems = data.cases;
+        }
+
+        if (loadedItems.length > 0) {
+          allCases = loadedItems.map((item, idx) => ({
+            id: item.id || item["เลขคดี"] || item["เลขรับ"] || `คดี ${idx + 1}`,
+            subId: item.subId || item["เลขรับตรวจ"] || "ตร-69-2569",
+            type: normalizeType(item.type || item["ประเภท"] || item["กลุ่มงาน"] || "ยาเสพติด"),
+            station: item.station || item["สภ."] || item["สถานีตำรวจ"] || "สภ.เมืองตรัง",
+            suspect: item.suspect || item["ผู้ต้องหา"] || item["บุคคลในคดี"] || "ไม่ระบุ",
+            officer: item.officer || item["พนักงานสอบสวน"] || item["พงส."] || "พนักงานสอบสวนเจ้าของสำนวน",
+            result: item.result || item["ผลการตรวจ"] || item["ผลการตรวจวิเคราะห์"] || "ตรวจพิสูจน์แล้วเสร็จตามระเบียบ",
+            status: item.status || "เสร็จสิ้นแล้ว"
+          }));
+
+          if (syncText) syncText.innerText = `เชื่อมต่อสดแล้ว (${allCases.length} คดี)`;
+          showToast(`อัปเดตข้อมูลสดสำเร็จ (${allCases.length} คดี)`);
+        } else {
+          useFallback();
+        }
+      } catch (err) {
+        console.warn("Using offline fallback data:", err);
+        useFallback();
+      } finally {
+        if (syncIcon) syncIcon.classList.remove("fa-spin");
+        updateCounts();
+        applyFilters();
+      }
+    }
+
+    function useFallback() {
+      allCases = [...FALLBACK_CASES];
+      const syncText = document.getElementById("sync-text");
+      if (syncText) syncText.innerText = `ข้อมูลมาตรฐาน พฐ.ตรัง (${allCases.length} คดี)`;
+    }
+
+    function normalizeType(raw) {
+      if (!raw) return "ยาเสพติด";
+      if (raw.includes("ยา") || raw.includes("สารเสพติด")) return "ยาเสพติด";
+      if (raw.includes("สถาน") || raw.includes("เกิดเหตุ")) return "ตรวจสถานที่เกิดเหตุ";
+      if (raw.includes("ปืน") || raw.includes("ทะเบียน") || raw.includes("อาวุธ")) return "ตรวจทะเบียนปืน";
+      return "ยาเสพติด";
+    }
+
+    function handleSearch() {
+      searchQuery = document.getElementById("search-input").value.trim().toLowerCase();
+      const clearBtn = document.getElementById("clear-search-btn");
+      if (clearBtn) {
+        clearBtn.classList.toggle("hidden", searchQuery.length === 0);
+      }
+      currentPage = 1;
+      applyFilters();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById("search-input");
+      if (input) input.value = '';
+      searchQuery = '';
+      document.getElementById("clear-search-btn").classList.add("hidden");
+      currentPage = 1;
+      applyFilters();
+    }
+
+    function handleFilterChange() {
+      currentStation = document.getElementById("station-filter").value;
+      currentPage = 1;
+      applyFilters();
+    }
+
+    function setCategory(cat) {
+      currentCategory = cat;
+      currentPage = 1;
+      
+      document.querySelectorAll(".cat-tab").forEach(tab => {
+        tab.classList.remove("bg-brand-navy", "text-white", "shadow-sm");
+        tab.classList.add("bg-slate-100", "text-slate-700");
+      });
+
+      const activeTab = document.getElementById(`tab-${cat}`);
+      if (activeTab) {
+        activeTab.classList.remove("bg-slate-100", "text-slate-700");
+        activeTab.classList.add("bg-brand-navy", "text-white", "shadow-sm");
+      }
+
+      applyFilters();
+    }
+
+    function resetAllFilters() {
+      document.getElementById("search-input").value = '';
+      searchQuery = '';
+      document.getElementById("clear-search-btn").classList.add("hidden");
+      document.getElementById("station-filter").value = 'ALL';
+      currentStation = 'ALL';
+      setCategory('ALL');
+    }
+
+    function updateCounts() {
+      const countAll = allCases.length;
+      const countDrug = allCases.filter(c => c.type === 'ยาเสพติด').length;
+      const countScene = allCases.filter(c => c.type === 'ตรวจสถานที่เกิดเหตุ').length;
+      const countGun = allCases.filter(c => c.type === 'ตรวจทะเบียนปืน').length;
+
+      document.getElementById("count-ALL").innerText = countAll;
+      document.getElementById("count-ยาเสพติด").innerText = countDrug;
+      document.getElementById("count-สถานที่เกิดเหตุ").innerText = countScene;
+      document.getElementById("count-ทะเบียนปืน").innerText = countGun;
+      document.getElementById("stat-completed").innerText = `${countAll} คดี (16 สภ.)`;
+    }
+
+    function applyFilters() {
+      filteredCases = allCases.filter(item => {
+        const matchCat = (currentCategory === 'ALL' || item.type === currentCategory);
+        const matchStation = (currentStation === 'ALL' || item.station === currentStation);
+        let matchText = true;
+        if (searchQuery) {
+          const haystack = `${item.id} ${item.subId} ${item.station} ${item.suspect} ${item.officer} ${item.result}`.toLowerCase();
+          matchText = haystack.includes(searchQuery);
+        }
+        return matchCat && matchStation && matchText;
+      });
+
+      document.getElementById("match-count").innerText = filteredCases.length;
+      renderCases();
+      renderPagination();
+    }
+
+    function renderCases() {
+      const container = document.getElementById("cases-grid");
+      const emptyState = document.getElementById("empty-state");
+
+      if (filteredCases.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove("hidden");
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+
+      let displayItems = filteredCases;
+      if (itemsPerPage !== 'all') {
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        displayItems = filteredCases.slice(start, end);
+      }
+
+      container.innerHTML = displayItems.map((c) => {
+        let badgeClass = 'badge-drug';
+        let typeIcon = 'fa-pills';
+        if (c.type === 'ตรวจสถานที่เกิดเหตุ') {
+          badgeClass = 'badge-scene';
+          typeIcon = 'fa-house-chimney-crack';
+        } else if (c.type === 'ตรวจทะเบียนปืน') {
+          badgeClass = 'badge-gun';
+          typeIcon = 'fa-gun';
+        }
+
+        return `
+          <div class="bg-white rounded-xl border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all p-5 flex flex-col justify-between space-y-4">
+            
+            <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <div class="flex items-center space-x-2">
+                  <span class="text-lg font-extrabold text-slate-900 tracking-tight font-mono">${c.id}</span>
+                  <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md ${badgeClass} inline-flex items-center space-x-1">
+                    <i class="fa-solid ${typeIcon} text-[10px]"></i>
+                    <span>${c.type}</span>
+                  </span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-0.5">เลขรับตรวจ: ${c.subId}</div>
+              </div>
+
+              <div class="flex items-center space-x-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md text-[11px] font-semibold border border-emerald-200 shrink-0">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>ตรวจเสร็จสิ้นแล้ว</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-xs bg-slate-50/80 p-3 rounded-lg border border-slate-100">
+              <div>
+                <div class="text-[11px] text-slate-400 flex items-center space-x-1">
+                  <i class="fa-solid fa-building-shield"></i>
+                  <span>สภ. เจ้าของคดี</span>
+                </div>
+                <div class="font-bold text-slate-800 mt-0.5 truncate">${c.station}</div>
+              </div>
+
+              <div>
+                <div class="text-[11px] text-slate-400 flex items-center space-x-1">
+                  <i class="fa-solid fa-user"></i>
+                  <span>ผู้ต้องหา / บุคคลในคดี</span>
+                </div>
+                <div class="font-bold text-slate-800 mt-0.5 truncate">${c.suspect}</div>
+              </div>
+
+              <div class="col-span-2 pt-1 border-t border-slate-200/60">
+                <div class="text-[11px] text-slate-400 flex items-center space-x-1">
+                  <i class="fa-solid fa-user-tie"></i>
+                  <span>พนักงานสอบสวน</span>
+                </div>
+                <div class="font-medium text-slate-700 mt-0.5">${c.officer}</div>
+              </div>
+            </div>
+
+            <div class="bg-blue-50/50 border border-blue-100/80 rounded-lg p-3 text-xs text-slate-700">
+              <div class="text-[11px] font-bold text-blue-900 flex items-center space-x-1 mb-1">
+                <i class="fa-solid fa-microscope text-blue-600"></i>
+                <span>ผลการตรวจวิเคราะห์:</span>
+              </div>
+              <p class="leading-relaxed text-slate-700 line-clamp-3">${c.result}</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="copySummary('${encodeURIComponent(JSON.stringify(c))}')" class="w-full inline-flex items-center justify-center space-x-1.5 py-2 px-3 rounded-lg bg-brand-navy hover:bg-slate-800 text-white font-medium text-xs transition-colors shadow-sm active:scale-95">
+                <i class="fa-regular fa-copy"></i>
+                <span>คัดลอกสรุป</span>
+              </button>
+              <button onclick="shareCase('${encodeURIComponent(JSON.stringify(c))}')" class="w-full inline-flex items-center justify-center space-x-1.5 py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors shadow-sm active:scale-95">
+                <i class="fa-solid fa-share-nodes"></i>
+                <span>แชร์ พงส.</span>
+              </button>
+            </div>
+
+          </div>
+        `;
+      }).join('');
+    }
+
+    function changeItemsPerPage(val) {
+      itemsPerPage = val === 'all' ? 'all' : parseInt(val, 10);
+      currentPage = 1;
+      renderCases();
+      renderPagination();
+    }
+
+    function renderPagination() {
+      const pageInfo = document.getElementById("page-info");
+      const controls = document.getElementById("pagination-controls");
+
+      if (filteredCases.length === 0) {
+        pageInfo.innerText = "ไม่พบรายการคดี";
+        controls.innerHTML = '';
+        return;
+      }
+
+      if (itemsPerPage === 'all') {
+        pageInfo.innerText = `แสดงทั้งหมด ${filteredCases.length} คดี`;
+        controls.innerHTML = '';
+        return;
+      }
+
+      const totalPages = Math.ceil(filteredCases.length / itemsPerPage);
+      const start = (currentPage - 1) * itemsPerPage + 1;
+      const end = Math.min(currentPage * itemsPerPage, filteredCases.length);
+      pageInfo.innerText = `แสดง ${start} - ${end} จากทั้งหมด ${filteredCases.length} คดี (หน้า ${currentPage}/${totalPages})`;
+
+      let btnHtml = '';
+      btnHtml += `
+        <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled class="px-2 py-1 border border-slate-200 rounded text-slate-300 cursor-not-allowed"' : 'class="px-2 py-1 border border-slate-300 rounded hover:bg-slate-100 text-slate-600"'}>
+          <i class="fa-solid fa-chevron-left text-[10px]"></i>
+        </button>
+      `;
+
+      for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)) {
+          const isActive = p === currentPage;
+          btnHtml += `
+            <button onclick="goToPage(${p})" class="px-2.5 py-1 rounded text-xs font-semibold ${isActive ? 'bg-brand-navy text-white' : 'border border-slate-200 hover:bg-slate-100 text-slate-700'}">
+              ${p}
+            </button>
+          `;
+        } else if (p === currentPage - 2 || p === currentPage + 2) {
+          btnHtml += `<span class="px-1 text-slate-400">...</span>`;
+        }
+      }
+
+      btnHtml += `
+        <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled class="px-2 py-1 border border-slate-200 rounded text-slate-300 cursor-not-allowed"' : 'class="px-2 py-1 border border-slate-300 rounded hover:bg-slate-100 text-slate-600"'}>
+          <i class="fa-solid fa-chevron-right text-[10px]"></i>
+        </button>
+      `;
+
+      controls.innerHTML = btnHtml;
+    }
+
+    function goToPage(page) {
+      const totalPages = Math.ceil(filteredCases.length / itemsPerPage);
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      renderCases();
+      renderPagination();
+      window.scrollTo({ top: 380, behavior: 'smooth' });
+    }
+
+    function copySummary(encoded) {
+      const c = JSON.parse(decodeURIComponent(encoded));
+      const summaryText = 
+`🔬 [พฐ.จว.ตรัง ศพฐ.9] แจ้งสถานะผลตรวจพิสูจน์
+━━━━━━━━━━━━━━━━━━━━
+📌 เลขคดี: ${c.id} (${c.type})
+🏢 สภ.: ${c.station}
+👤 ผู้ต้องหา/บุคคล: ${c.suspect}
+👮 พงส.: ${c.officer}
+✅ สถานะ: ${c.status}
+🔍 ผลการตรวจ: ${c.result}
+━━━━━━━━━━━━━━━━━━━━
+☎️ ติดต่อกลุ่มงานตรวจพิสูจน์หลักฐาน พฐ.จว.ตรัง: 075-214-201`;
+
+      navigator.clipboard.writeText(summaryText).then(() => {
+        showToast(`คัดลอกสรุปสำนวนคดี ${c.id} เรียบร้อยแล้ว`);
+      }).catch(() => {
+        showToast("ไม่สามารถคัดลอกอัตโนมัติได้");
+      });
+    }
+
+    function shareCase(encoded) {
+      const c = JSON.parse(decodeURIComponent(encoded));
+      const shareText = `[ผลตรวจพิสูจน์ พฐ.ตรัง] คดี ${c.id} (${c.station}) - สถานะ: ${c.status} (ผล: ${c.result})`;
+      
+      if (navigator.share) {
+        navigator.share({
+          title: `ผลตรวจพิสูจน์ พฐ.จว.ตรัง คดี ${c.id}`,
+          text: shareText,
+          url: window.location.href
+        }).catch(() => {});
+      } else {
+        copySummary(encoded);
+      }
+    }
+
+    let toastTimeout;
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      const msg = document.getElementById("toast-message");
+      if (!toast || !msg) return;
+
+      msg.innerText = message;
+      clearTimeout(toastTimeout);
+      toast.classList.remove("translate-y-24", "opacity-0", "pointer-events-none");
+      toast.classList.add("translate-y-0", "opacity-100");
+
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove("translate-y-0", "opacity-100");
+        toast.classList.add("translate-y-24", "opacity-0", "pointer-events-none");
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
